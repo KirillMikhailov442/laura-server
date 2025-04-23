@@ -3,7 +3,9 @@ package com.userMicroservice.UserMicroservice.controllers;
 import com.userMicroservice.UserMicroservice.dto.*;
 import com.userMicroservice.UserMicroservice.models.User;
 import com.userMicroservice.UserMicroservice.services.UserService;
+import com.userMicroservice.UserMicroservice.utils.GeneratorKeys;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,35 +19,49 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private GeneratorKeys generatorKeys;
+
     @GetMapping
-    public ResponseEntity<List<UserResDTO>> getAllUsers(){
+    public ResponseEntity<List<User>> getAllUsers(){
         List<User> users = userService.getAllUsers();
-        List<UserResDTO> usersRes = users.stream().map(UserResDTO::new).toList();
-        return new ResponseEntity<>(usersRes, HttpStatus.OK);
+        return new ResponseEntity<>(users, HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserResDTO> getOneUser(@PathVariable long id){
+    public ResponseEntity<User> getOneUser(@PathVariable long id){
         User user = userService.findUserById(id);
-        return new ResponseEntity<>(new UserResDTO(user), HttpStatus.FOUND);
+        return new ResponseEntity<>(user, HttpStatus.FOUND);
     }
 
     @PostMapping
-    public ResponseEntity<UserResDTO> registration(@Valid @RequestBody UserReqDTO dto){
+    public ResponseEntity<User> registration(@Valid @RequestBody UserReqDTO dto){
         User user = userService.createUser(dto);
-        return new ResponseEntity<>(new UserResDTO(user), HttpStatus.CREATED);
+        return new ResponseEntity<>(user, HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserResDTO> updateUser(@Valid @RequestBody UserUpdateDTO dto, @PathVariable long id){
+    public ResponseEntity<User> updateUser(@Valid @RequestBody UserUpdateDTO dto, @PathVariable long id){
         User updatedUser = userService.updateUser(dto, id);
-        return new ResponseEntity<>(new UserResDTO(updatedUser), HttpStatus.OK);
+        return new ResponseEntity<>(updatedUser, HttpStatus.OK);
     }
 
     @PatchMapping("/update-password/{id}")
-    public ResponseEntity<UserResDTO> updatePasswordOfUser(@Valid @RequestBody UpdatePasswordOfUserDTO dto, @PathVariable long id){
+    public ResponseEntity<User> updatePasswordOfUser(@Valid @RequestBody UpdatePasswordOfUserDTO dto, @PathVariable long id){
         User updatedUser = userService.updatePasswordOfUser(dto, id);
-        return new ResponseEntity<>(new UserResDTO(updatedUser), HttpStatus.OK);
+        return new ResponseEntity<>(updatedUser, HttpStatus.OK);
+    }
+
+    @PatchMapping("/confirm/{code}")
+    public ResponseEntity<String> confirmUser(@Valid @PathVariable @NotNull(message = "Code must not be null") String code){
+       try{
+           long userId = Long.parseLong(generatorKeys.decode(code));
+           String firstName = userService.findUserById(userId).getFirstName();
+           userService.confirmUser(userId);
+           return new ResponseEntity<>(String.format("User %s has been successfully verified",firstName), HttpStatus.OK);
+       }catch (Exception ex){
+           return new ResponseEntity<>("Failed to verify user", HttpStatus.INTERNAL_SERVER_ERROR);
+       }
     }
 
     @DeleteMapping("/{id}")
@@ -68,6 +84,8 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginDTO dto){
-        return new ResponseEntity<>("Successfully login", HttpStatus.OK);
+        TokensDTO tokens = userService.login(dto);
+        return new ResponseEntity<>(tokens, HttpStatus.OK);
     }
+
 }

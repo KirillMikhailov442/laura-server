@@ -1,6 +1,6 @@
 package com.userMicroservice.UserMicroservice.services;
 
-import com.userMicroservice.UserMicroservice.dto.TokensDTO;
+import com.userMicroservice.UserMicroservice.dto.TokensCreateDTO;
 import com.userMicroservice.UserMicroservice.exceptions.NotFound;
 import com.userMicroservice.UserMicroservice.models.Tokens;
 import com.userMicroservice.UserMicroservice.models.User;
@@ -30,12 +30,12 @@ public class TokensService {
         return findTokenById(id).getUserAgent();
     }
 
-    public Tokens createToken(TokensDTO dto, User user){
+    public Tokens createToken(TokensCreateDTO dto, User user){
         Tokens token = Tokens.builder().userId(user).refreshToken(dto.getRefresh()).IP(dto.getIP()).userAgent(dto.getUserAgent()).build();
         return tokensRepository.save(token);
     }
 
-    public Tokens updateToken(TokensDTO dto, long tokenId){
+    public Tokens updateToken(TokensCreateDTO dto, long tokenId){
         Tokens token = findTokenById(tokenId);
 
         if(dto.getIP() != null) token.setIP(dto.getIP());

@@ -1,21 +1,21 @@
-package com.userMicroservice.UserMicroservice.services;
+package com.userMicroservice.UserMicroservice.utils;
 
 import com.userMicroservice.UserMicroservice.interfaces.TokensTypes;
-import com.userMicroservice.UserMicroservice.models.User;
+import com.userMicroservice.UserMicroservice.services.UserPrincipal;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
 import java.util.Map;
 import java.util.function.Function;
 
-@Service
-public class JWTService {
+@Component
+public class JWTUtils {
     private String accessKey;
     private int accessLifeTime;
 

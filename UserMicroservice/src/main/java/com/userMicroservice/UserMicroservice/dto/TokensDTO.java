@@ -1,17 +1,10 @@
 package com.userMicroservice.UserMicroservice.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
-@Data
+@Getter
 @Builder
-@AllArgsConstructor
 public class TokensDTO {
-
-    private String refresh;
-
-    private String IP;
-
-    private String userAgent;
+    private String accessToken;
 }

@@ -1,14 +1,15 @@
 package com.userMicroservice.UserMicroservice.services;
 
-import com.userMicroservice.UserMicroservice.dto.UpdatePasswordOfUserDTO;
-import com.userMicroservice.UserMicroservice.dto.UserReqDTO;
-import com.userMicroservice.UserMicroservice.dto.UserUpdateDTO;
+import com.userMicroservice.UserMicroservice.dto.*;
+import com.userMicroservice.UserMicroservice.exceptions.BadRequest;
 import com.userMicroservice.UserMicroservice.exceptions.Conflict;
 import com.userMicroservice.UserMicroservice.exceptions.NotFound;
 import com.userMicroservice.UserMicroservice.interfaces.UserRoles;
 import com.userMicroservice.UserMicroservice.models.Roles;
 import com.userMicroservice.UserMicroservice.models.User;
 import com.userMicroservice.UserMicroservice.repositories.UserRepository;
+import com.userMicroservice.UserMicroservice.utils.GeneratorKeys;
+import com.userMicroservice.UserMicroservice.utils.JWTUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -18,13 +19,18 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 @Service
 public class UserService implements UserDetailsService{
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private RolesService rolesService;
+    @Autowired
+    private GeneratorKeys generatorKeys;
+    @Autowired
+    private JWTUtils jwtUtils;
 
     PasswordEncoder encoder = new BCryptPasswordEncoder();
 
@@ -59,14 +65,15 @@ public class UserService implements UserDetailsService{
         if(userRepository.existsByEmail(dto.getEmail())) throw new Conflict("A user with such email already exists");
         if(userRepository.existsByNickname(dto.getNickname())) throw new Conflict("A user with such nickname already exists");
 
-
-//        TODO надо изменить сохранение роли в таблице roles, чтобы избежать дубликана названия роли
+        Set<Roles> roles = Set.of(rolesService.createRole(UserRoles.USER));
         User newUser = User.builder().firstName(dto.getFirstName()).lastName(dto.getLastName())
                 .email(dto.getEmail()).nickname(dto.getNickname())
                 .password(encoder.encode(dto.getPassword()))
-                .deactivatedAt(null).isConfirmed(false).roles(Set.of(Roles.builder().name(UserRoles.USER).build()))
+                .deactivatedAt(null).isConfirmed(false).roles(roles)
                 .build();
-        return userRepository.save(newUser);
+        User createdUser = userRepository.save(newUser);
+        System.out.println(generatorKeys.encode(String.valueOf(createdUser.getId())));
+        return createdUser;
     }
 
     public User updateUser(UserUpdateDTO dto, long id){
@@ -106,6 +113,17 @@ public class UserService implements UserDetailsService{
         User user = findUserById(id);
         user.setDeactivatedAt(null);
         userRepository.save(user);
+    }
+
+    public TokensDTO login(LoginDTO dto){
+        User user = findUserByEmail(dto.getEmail());
+        System.out.println(user.getPassword());
+        System.out.println(encoder.encode(dto.getPassword()));
+        System.out.println(encoder.matches(dto.getPassword(), user.getPassword()));
+        if(user.getPassword() != encoder.encode(dto.getPassword())) throw new BadRequest("Incorrect password");
+
+        String accessToken = jwtUtils.generateAccessToken(new UserPrincipal(user), null);
+        return TokensDTO.builder().accessToken(accessToken).build();
     }
 
     @Override
