@@ -1,10 +1,9 @@
-package com.userMicroservice.UserMicroservice.services;
+package com.userMicroservice.UserMicroservice.utils.jwt;
 
 import com.userMicroservice.UserMicroservice.models.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.stream.Collectors;

@@ -1,12 +1,12 @@
-package com.userMicroservice.UserMicroservice.utils;
+package com.userMicroservice.UserMicroservice.utils.jwt;
 
 import com.userMicroservice.UserMicroservice.interfaces.TokensTypes;
-import com.userMicroservice.UserMicroservice.services.UserPrincipal;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
@@ -16,10 +16,16 @@ import java.util.function.Function;
 
 @Component
 public class JWTUtils {
+    @Value("${token.access.secret}")
     private String accessKey;
+
+    @Value("${token.access.lifetime}")
     private int accessLifeTime;
 
+    @Value("${token.refresh.secret}")
     private String refreshKey;
+
+    @Value("${token.refresh.lifetime}")
     private int refreshLifeTime;
 
     private String generateToken(UserPrincipal user, Map<String, Object> extraClaims, String key, int lifeTime){
@@ -45,8 +51,16 @@ public class JWTUtils {
         return generateToken(user, extraClaims, accessKey, accessLifeTime);
     }
 
+    public String generateAccessToken(UserPrincipal user){
+        return generateToken(user, accessKey, accessLifeTime);
+    }
+
     public String generateRefreshToken(UserPrincipal user, Map<String, Object> extraClaims){
         return generateToken(user, extraClaims, refreshKey, refreshLifeTime);
+    }
+
+    public String generateRefreshToken(UserPrincipal user){
+        return generateToken(user, refreshKey, refreshLifeTime);
     }
 
     public Claims getClaimsFromToken(String token, TokensTypes tokenType){

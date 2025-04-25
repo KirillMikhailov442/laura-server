@@ -7,4 +7,5 @@ import lombok.Getter;
 @Builder
 public class TokensDTO {
     private String accessToken;
+    private String refreshToken;
 }

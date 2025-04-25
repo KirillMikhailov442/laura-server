@@ -9,7 +9,8 @@ import com.userMicroservice.UserMicroservice.models.Roles;
 import com.userMicroservice.UserMicroservice.models.User;
 import com.userMicroservice.UserMicroservice.repositories.UserRepository;
 import com.userMicroservice.UserMicroservice.utils.GeneratorKeys;
-import com.userMicroservice.UserMicroservice.utils.JWTUtils;
+import com.userMicroservice.UserMicroservice.utils.jwt.JWTUtils;
+import com.userMicroservice.UserMicroservice.utils.jwt.UserPrincipal;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -18,7 +19,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -94,7 +97,7 @@ public class UserService implements UserDetailsService{
 
     public User updatePasswordOfUser(UpdatePasswordOfUserDTO dto, long id){
         User user = findUserById(id);
-        if(!encoder.encode(dto.getOldPassword()).equals(user.getPassword())) throw new Conflict("Old password does not match user password");
+        if(!encoder.matches(dto.getOldPassword(), user.getPassword())) throw new Conflict("Old password does not match user password");
         user.setPassword(encoder.encode(dto.getNewPassword()));
         return userRepository.save(user);
     }
@@ -117,13 +120,16 @@ public class UserService implements UserDetailsService{
 
     public TokensDTO login(LoginDTO dto){
         User user = findUserByEmail(dto.getEmail());
-        System.out.println(user.getPassword());
-        System.out.println(encoder.encode(dto.getPassword()));
-        System.out.println(encoder.matches(dto.getPassword(), user.getPassword()));
-        if(user.getPassword() != encoder.encode(dto.getPassword())) throw new BadRequest("Incorrect password");
+        UserPrincipal userPrincipal = new UserPrincipal(user);
 
-        String accessToken = jwtUtils.generateAccessToken(new UserPrincipal(user), null);
-        return TokensDTO.builder().accessToken(accessToken).build();
+        Map<String, Object> userClaims = new HashMap<>();
+        userClaims.put("roles", userPrincipal.getAuthorities());
+
+        if(!encoder.matches(dto.getPassword(), user.getPassword())) throw new BadRequest("Incorrect password");
+
+        String accessToken = jwtUtils.generateAccessToken(userPrincipal, userClaims);
+        String refreshToken = jwtUtils.generateRefreshToken(userPrincipal, userClaims);
+        return TokensDTO.builder().accessToken(accessToken).refreshToken(refreshToken).build();
     }
 
     @Override
