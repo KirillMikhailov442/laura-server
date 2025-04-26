@@ -1,6 +1,8 @@
 package com.userMicroservice.UserMicroservice.utils.filters;
 
 import com.userMicroservice.UserMicroservice.interfaces.TokensTypes;
+import com.userMicroservice.UserMicroservice.models.User;
+import com.userMicroservice.UserMicroservice.services.TokensService;
 import com.userMicroservice.UserMicroservice.services.UserService;
 import com.userMicroservice.UserMicroservice.utils.jwt.JWTUtils;
 import com.userMicroservice.UserMicroservice.utils.jwt.UserPrincipal;
@@ -21,29 +23,38 @@ import java.io.IOException;
 public class JWTAuthFilter extends OncePerRequestFilter {
     @Autowired
     private JWTUtils jwtUtils;
-
     @Autowired
     private UserService userService;
+    @Autowired
+    TokensService tokensService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
-        String token = null;
+        String accessToken = null;
+        String refreshToken = null;
         String username = null;
 
         if(authHeader != null && authHeader.startsWith("Bearer ")){
-            System.out.println("seccuess");
-            token = authHeader.substring(7);
-            username = jwtUtils.getUsernameFromToken(token, TokensTypes.ACCESS);
+            accessToken = authHeader.substring(7);
+            username = jwtUtils.getUsernameFromToken(accessToken, TokensTypes.ACCESS);
         }
 
         if(username != null && SecurityContextHolder.getContext().getAuthentication() == null){
             UserPrincipal userPrincipal = userService.loadUserByUsername(username);
-            System.out.println(userPrincipal.getAuthorities());
-            if(!jwtUtils.validateToken(token, TokensTypes.ACCESS, userPrincipal)){
+            if(!jwtUtils.validateToken(accessToken, TokensTypes.ACCESS, userPrincipal)){
                 UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userPrincipal, null, userPrincipal.getAuthorities());
                 authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+            }else{
+                if(jwtUtils.validateToken(refreshToken, TokensTypes.REFRESH, userPrincipal)){
+                    User user = userService.findUserById(Long.parseLong(jwtUtils.getUsernameFromToken(refreshToken, TokensTypes.REFRESH)));
+                    String newRefreshToken = jwtUtils.generateRefreshToken(new UserPrincipal(user));
+                    tokensService.updateRefreshToken(newRefreshToken, tokensService.findByRefresh(refreshToken).getId());
+
+                    userPrincipal = userService.loadUserByUsername(String.valueOf(user.getId()));
+                    UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userPrincipal, null, userPrincipal.getAuthorities());
+                }
             }
         }
         filterChain.doFilter(request, response);

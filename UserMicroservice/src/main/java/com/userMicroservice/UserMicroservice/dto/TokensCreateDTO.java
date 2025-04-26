@@ -8,10 +8,7 @@ import lombok.Data;
 @Builder
 @AllArgsConstructor
 public class TokensCreateDTO {
-
     private String refresh;
-
     private String IP;
-
     private String userAgent;
 }

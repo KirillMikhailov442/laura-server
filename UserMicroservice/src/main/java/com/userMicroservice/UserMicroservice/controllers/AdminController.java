@@ -22,6 +22,7 @@ public class AdminController {
     @Autowired
     private UserService userService;
 
+    @Autowired
     private AdminService adminService;
 
     @Operation(summary = "Get one user", description = "This endpoint allows you to get one user with id")

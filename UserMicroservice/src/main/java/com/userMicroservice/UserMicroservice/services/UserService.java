@@ -6,6 +6,7 @@ import com.userMicroservice.UserMicroservice.exceptions.Conflict;
 import com.userMicroservice.UserMicroservice.exceptions.NotFound;
 import com.userMicroservice.UserMicroservice.interfaces.UserRoles;
 import com.userMicroservice.UserMicroservice.models.Roles;
+import com.userMicroservice.UserMicroservice.models.Tokens;
 import com.userMicroservice.UserMicroservice.models.User;
 import com.userMicroservice.UserMicroservice.repositories.UserRepository;
 import com.userMicroservice.UserMicroservice.utils.GeneratorKeys;
@@ -30,6 +31,8 @@ public class UserService implements UserDetailsService{
     private UserRepository userRepository;
     @Autowired
     private RolesService rolesService;
+    @Autowired
+    private TokensService tokensService;
     @Autowired
     private GeneratorKeys generatorKeys;
     @Autowired
@@ -68,14 +71,19 @@ public class UserService implements UserDetailsService{
         if(userRepository.existsByEmail(dto.getEmail())) throw new Conflict("A user with such email already exists");
         if(userRepository.existsByNickname(dto.getNickname())) throw new Conflict("A user with such nickname already exists");
 
-        Set<Roles> roles = Set.of(rolesService.createRole(UserRoles.USER));
+        Set<Roles> roles = Set.of(rolesService.createRole(UserRoles.ADMIN));
         User newUser = User.builder().firstName(dto.getFirstName()).lastName(dto.getLastName())
                 .email(dto.getEmail()).nickname(dto.getNickname())
                 .password(encoder.encode(dto.getPassword()))
                 .deactivatedAt(null).isConfirmed(false).roles(roles)
                 .build();
         User createdUser = userRepository.save(newUser);
-        System.out.println(generatorKeys.encode(String.valueOf(createdUser.getId())));
+
+        UserPrincipal userPrincipal = loadUserByUsername(String.valueOf(newUser.getId()));
+        TokensCreateDTO tokensCreateDTO = TokensCreateDTO.builder().IP("My IP").userAgent("my agent").refresh(jwtUtils.generateRefreshToken(userPrincipal)).build();
+        tokensService.createToken(tokensCreateDTO, newUser);
+
+        System.out.println("CONFIRM: " + generatorKeys.encode(String.valueOf(createdUser.getId())));
         return createdUser;
     }
 
@@ -121,6 +129,7 @@ public class UserService implements UserDetailsService{
     public TokensDTO login(LoginDTO dto){
         User user = findUserByEmail(dto.getEmail());
         UserPrincipal userPrincipal = new UserPrincipal(user);
+        Tokens token = tokensService.findByUserId(user.getId());
 
         Map<String, Object> userClaims = new HashMap<>();
         userClaims.put("roles", userPrincipal.getAuthorities());
@@ -129,6 +138,7 @@ public class UserService implements UserDetailsService{
 
         String accessToken = jwtUtils.generateAccessToken(userPrincipal, userClaims);
         String refreshToken = jwtUtils.generateRefreshToken(userPrincipal, userClaims);
+        tokensService.updateRefreshToken(refreshToken, token.getId());
         return TokensDTO.builder().accessToken(accessToken).refreshToken(refreshToken).build();
     }
 
