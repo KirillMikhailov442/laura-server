@@ -60,5 +60,6 @@ public class SecurityConfig {
     private static final String[] PERMIT_ALL = {
             "api/v1/users/login",
             "api/v1/users/confirm/**",
+            "api/v1/users/update-tokens"
     };
 }

@@ -4,6 +4,7 @@ import com.userMicroservice.UserMicroservice.dto.*;
 import com.userMicroservice.UserMicroservice.exceptions.BadRequest;
 import com.userMicroservice.UserMicroservice.exceptions.Conflict;
 import com.userMicroservice.UserMicroservice.exceptions.NotFound;
+import com.userMicroservice.UserMicroservice.interfaces.TokensTypes;
 import com.userMicroservice.UserMicroservice.interfaces.UserRoles;
 import com.userMicroservice.UserMicroservice.models.Roles;
 import com.userMicroservice.UserMicroservice.models.Tokens;
@@ -137,8 +138,26 @@ public class UserService implements UserDetailsService{
         if(!encoder.matches(dto.getPassword(), user.getPassword())) throw new BadRequest("Incorrect password");
 
         String accessToken = jwtUtils.generateAccessToken(userPrincipal, userClaims);
-        String refreshToken = jwtUtils.generateRefreshToken(userPrincipal, userClaims);
+        String refreshToken = jwtUtils.generateRefreshToken(userPrincipal);
         tokensService.updateRefreshToken(refreshToken, token.getId());
+        return TokensDTO.builder().accessToken(accessToken).refreshToken(refreshToken).build();
+    }
+
+    public TokensDTO updateRefreshTokenOfUser(TokensCreateDTO dto){
+        String currentRefresh = dto.getRefresh();
+        if(!jwtUtils.isTokenExpired(currentRefresh, TokensTypes.REFRESH)){
+            throw new BadRequest("Token expired");
+        }
+        Tokens token = tokensService.findByRefresh(currentRefresh);
+        UserPrincipal userPrincipal = new UserPrincipal(findUserById(token.getUserId().getId()));
+
+        Map<String, Object> userClaims = new HashMap<>();
+        userClaims.put("roles", userPrincipal.getAuthorities());
+
+        String accessToken = jwtUtils.generateAccessToken(userPrincipal, userClaims);
+        String refreshToken = jwtUtils.generateRefreshToken(userPrincipal);
+        tokensService.updateRefreshToken(currentRefresh, token.getId());
+
         return TokensDTO.builder().accessToken(accessToken).refreshToken(refreshToken).build();
     }
 

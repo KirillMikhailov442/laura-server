@@ -32,7 +32,6 @@ public class JWTAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
         String accessToken = null;
-        String refreshToken = null;
         String username = null;
 
         if(authHeader != null && authHeader.startsWith("Bearer ")){
@@ -46,15 +45,6 @@ public class JWTAuthFilter extends OncePerRequestFilter {
                 UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userPrincipal, null, userPrincipal.getAuthorities());
                 authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-            }else{
-                if(jwtUtils.validateToken(refreshToken, TokensTypes.REFRESH, userPrincipal)){
-                    User user = userService.findUserById(Long.parseLong(jwtUtils.getUsernameFromToken(refreshToken, TokensTypes.REFRESH)));
-                    String newRefreshToken = jwtUtils.generateRefreshToken(new UserPrincipal(user));
-                    tokensService.updateRefreshToken(newRefreshToken, tokensService.findByRefresh(refreshToken).getId());
-
-                    userPrincipal = userService.loadUserByUsername(String.valueOf(user.getId()));
-                    UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userPrincipal, null, userPrincipal.getAuthorities());
-                }
             }
         }
         filterChain.doFilter(request, response);

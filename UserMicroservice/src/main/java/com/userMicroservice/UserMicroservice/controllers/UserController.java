@@ -22,7 +22,6 @@ import java.util.List;
 public class UserController {
     @Autowired
     private UserService userService;
-
     @Autowired
     private GeneratorKeys generatorKeys;
 
@@ -97,4 +96,9 @@ public class UserController {
         return new ResponseEntity<>(tokens, HttpStatus.OK);
     }
 
+    @Operation(summary = "Update tokens", description = "This endpoint allows you to update the access token and the refresh token")
+    @PatchMapping("/update-tokens")
+    public ResponseEntity<TokensDTO> updateRefreshToken(@Valid @RequestBody TokensCreateDTO dto){
+        return new ResponseEntity<>(userService.updateRefreshTokenOfUser(dto), HttpStatus.CREATED);
+    }
 }
